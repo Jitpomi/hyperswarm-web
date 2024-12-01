@@ -1,33 +1,129 @@
+import { createServer } from 'http'
+import Hyperswarm from 'hyperswarm'
+import { Http3Server } from '@fails-components/webtransport'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
-const HyperswarmProxyWSServer = require('hyperswarm-proxy-ws/server')
-const { SignalServer } = require('@geut/discovery-swarm-webrtc/server')
-const websocket = require('websocket-stream')
+const DEFAULT_PORT = 4977 // HYPR on a phone pad
 
-const url = require('url')
+export class HyperswarmBridge {
+  constructor(opts = {}) {
+    this.port = opts.port || DEFAULT_PORT
+    this.swarm = new Hyperswarm()
+    this.webTransport = null
 
-class HyperswarmServer extends HyperswarmProxyWSServer {
-  listenOnServer (server) {
-    this.server = server
+    // Load certificates
+    const certsDir = new URL('./certs', import.meta.url).pathname
+    this.cert = opts.cert || readFileSync(join(certsDir, 'cert.pem'))
+    this.privKey = opts.privKey || readFileSync(join(certsDir, 'cert.key'))
+  }
 
-    const proxyWss = this.websocketServer = websocket.createServer({ noServer: true }, (socket) => {
-      this.handleStream(socket)
+  async start() {
+    // Create WebTransport server
+    this.webTransport = new Http3Server({
+      port: this.port,
+      host: 'localhost',
+      cert: this.cert,
+      privKey: this.privKey,
+      secret: 'mysecret' // Required for HTTP/3
     })
 
-    const signalServer = new SignalServer({ noServer: true })
-    const signalWss = signalServer.ws
+    // Start the server
+    this.webTransport.startServer()
 
-    server.on('upgrade', function upgrade(request, socket, head) {
-      const pathname = url.parse(request.url).pathname;
+    // Wait for server to be ready
+    await this.webTransport.ready
 
-      if (pathname === '/signal') {
-        signalWss.handleUpgrade(request, socket, head, (ws) => signalWss.emit('connection', ws, request));
-        return
+    // Handle new WebTransport sessions
+    const sessionStream = this.webTransport.sessionStream('/')
+    const reader = sessionStream.getReader()
+
+    while (true) {
+      const { value: session, done } = await reader.read()
+      if (done) break
+
+      session.ready.then(() => {
+        this._handleSession(session).catch(console.error)
+      })
+    }
+
+    console.log(`Hyperswarm WebTransport bridge listening on port ${this.port}`)
+  }
+
+  async _handleSession(session) {
+    // Each session represents a browser client
+    try {
+      const incomingStream = await session.incomingBidirectionalStreams
+      const reader = incomingStream.getReader()
+
+      while (true) {
+        const { value: stream, done } = await reader.read()
+        if (done) break
+
+        const streamReader = stream.readable.getReader()
+        const { value: message } = await streamReader.read()
+        streamReader.releaseLock()
+
+        const { type, topic } = JSON.parse(new TextDecoder().decode(message))
+        
+        if (type === 'join') {
+          // Join the Hyperswarm network for this topic
+          const discovery = this.swarm.join(Buffer.from(topic, 'hex'))
+          
+          // Handle new peer connections from the DHT
+          this.swarm.on('connection', (peerStream, info) => {
+            if (info.topic.equals(Buffer.from(topic, 'hex'))) {
+              this._bridgeStreams(stream, peerStream)
+            }
+          })
+
+          // Cleanup when browser disconnects
+          stream.readable.closed.then(() => {
+            discovery.destroy()
+          })
+        }
       }
+    } catch (err) {
+      console.error('Session error:', err)
+      session.close()
+    }
+  }
 
-      // proxy
-      proxyWss.handleUpgrade(request, socket, head, (ws) => proxyWss.emit('connection', ws, request));
-    });
+  _bridgeStreams(browserStream, peerStream) {
+    // Bridge the browser's WebTransport stream with the peer's UDP stream
+    browserStream.readable.pipeTo(peerStream.writable).catch(() => {})
+    peerStream.readable.pipeTo(browserStream.writable).catch(() => {})
+
+    // Handle cleanup
+    const cleanup = () => {
+      browserStream.close()
+      peerStream.destroy()
+    }
+
+    browserStream.readable.closed.then(cleanup)
+    peerStream.on('close', cleanup)
+  }
+
+  async stop() {
+    if (this.webTransport) {
+      this.webTransport.stopServer()
+      await this.webTransport.closed
+    }
+    if (this.swarm) {
+      await this.swarm.destroy()
+    }
   }
 }
 
-module.exports = HyperswarmServer
+// CLI support
+if (process.argv[1] === import.meta.url) {
+  const bridge = new HyperswarmBridge({
+    port: process.env.PORT || DEFAULT_PORT
+  })
+  
+  bridge.start().catch(console.error)
+  
+  process.on('SIGINT', () => {
+    bridge.stop().catch(console.error)
+  })
+}

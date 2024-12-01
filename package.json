@@ -1,43 +1,30 @@
 {
   "name": "hyperswarm-web",
-  "version": "2.2.0",
-  "description": "Implementation of the hyperswarm API for use in web browsers",
+  "version": "3.0.0",
+  "description": "Hyperswarm web transport implementation",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "node test"
+    "test": "node test/index.js",
+    "debug": "NODE_DEBUG=hyperswarm-web,dht DEBUG=hyperswarm-web:* node --inspect-brk test/index.js",
+    "debug:verbose": "NODE_DEBUG=hyperswarm-web,dht DEBUG=hyperswarm-web:*,hyperswarm:* node --inspect-brk test/index.js"
   },
-  "bin": {
-    "hyperswarm-web": "bin.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/RangerMauve/hyperswarm-web.git"
-  },
-  "keywords": [
-    "hyperswarm",
-    "proxy",
-    "web",
-    "browser",
-    "webrtc"
-  ],
-  "author": "rangermauve",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/RangerMauve/hyperswarm-web/issues"
-  },
-  "homepage": "https://github.com/RangerMauve/hyperswarm-web#readme",
   "dependencies": {
-    "@geut/discovery-swarm-webrtc": "^4.0.1",
-    "duplexpair": "^1.0.1",
-    "hyperswarm-proxy-ws": "^1.2.0",
-    "minimist": "^1.2.0",
-    "send": "^0.17.1",
-    "websocket-stream": "^5.5.2"
+    "@hyperswarm/dht": "^6.5.1",
+    "@hyperswarm/dht-relay": "^0.4.0",
+    "@hyperswarm/secret-stream": "^6.7.1",
+    "@stablelib/blake2b": "^2.0.0",
+    "@stablelib/sha256": "^2.0.0",
+    "b4a": "^1.6.4",
+    "hyperswarm": "^4.7.3",
+    "protomux": "^3.4.3",
+    "simple-peer-light": "^9.2.1",
+    "sodium-javascript": "^0.8.0",
+    "sodium-universal": "^4.0.1"
   },
   "devDependencies": {
-    "get-port": "^5.1.0",
-    "hyperswarm": "^2.4.0",
-    "tape": "^4.12.1",
-    "wrtc": "^0.4.6"
+    "@hyperswarm/testnet": "^3.1.4",
+    "brittle": "^3.7.0",
+    "get-port": "^6.1.2"
   }
 }

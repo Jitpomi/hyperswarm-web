@@ -1,118 +1,92 @@
-# hyperswarm-web
-Implementation of the hyperswarm API for use in web browsers
+# HyperswarmWeb
 
+A lightweight, flexible peer-to-peer networking library for web applications using Hyperswarm technologies.
 
-## Using in an application
+## Features
 
-```
-npm i -s hyperswarm-web
-```
+- **Flexible Topic Handling**: Support for multiple topic input types (string, Buffer, Uint8Array)
+- **Robust DHT Integration**: Seamless integration with Hyperswarm DHT
+- **Lightweight Peer Discovery**: Efficient peer connection and discovery mechanisms
+- **Cross-Platform Compatibility**: Works in Node.js and web browsers
+- **Minimal Configuration**: Easy to set up and use
 
-```js
-// Based on example in hyperswarm repo
-// Try running the regular hyperswarm demo with node
-const hyperswarm = require('hyperswarm-web')
-const crypto = require('crypto')
-
-const swarm = hyperswarm({
-  // Specify a server list of HyperswarmServer instances
-  bootstrap: ['ws://yourhyperswarmserver.com'],
-  // You can also specify proxy and signal servers separated
-  wsProxy: [
-    'ws://proxy1.com',
-    'ws://proxy2.com'
-  ],
-  webrtcBootstrap: [
-    'ws://signal1.com',
-    'ws://signal2.com'
-  ],
-  // The configuration passed to the SimplePeer constructor
-  // See https://github.com/feross/simple-peer#peer--new-peeropts
-  // for more options
-  simplePeer: {
-    // The configuration passed to the RTCPeerConnection constructor, for more details see
-    // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#RTCConfiguration_dictionary
-    config: {
-      // List of STUN and TURN servers to connect
-      // Without the connection is limited to local peers
-      iceServers: require('./ice-servers.json')
-    }
-  },
-  // Maximum number of peers (optional)
-  // Used in both webrtc (default 5) and ws proxy config (default 24)
-  maxPeers: 10,
-  // Websocket reconnect delay in milliseconds (optional) (default 1000)
-  wsReconnectDelay: 5000
-})
-
-// look for peers listed under this topic
-const topic = crypto.createHash('sha256')
-  .update('my-hyperswarm-topic')
-  .digest()
-
-swarm.join(topic)
-
-swarm.on('connection', (socket, details) => {
-  console.log('new connection!', details)
-
-  // you can now use the socket as a stream, eg:
-  // socket.pipe(hypercore.replicate()).pipe(socket)
-})
-
-swarm.on('disconnection', (socket, details) => {
-  console.log(details.peer.host, 'disconnected!')
-  console.log('now we have', swarm.peers.length, 'peers!')
-})
-```
-
-Build it with [Browserify](http://browserify.org/) to get it running on the web.
-
-You could also compile an existing codebase relying on hyperswarm to run on the web by adding a `browser` field set to `{"hyperswarm": "hyperswarm-web"}` to have Browserify alias it when compiling dependencies.
-
-## Setting up a proxy server
-
-`HyperswarmServer` provides two services:
-
-  - [HyperswarmProxyWS](https://github.com/RangerMauve/hyperswarm-proxy-ws): to proxy hyperswarm connections over websockets. Path: `ws://yourserver/proxy`
-  - [SignalServer](https://github.com/geut/discovery-swarm-webrtc#server): for P2P WebRTC signaling connections. Path: `ws://yourserver/signal`
-
-Running a `HyperswarmServer` will allows you to use both services in one single process.
-
-```
-npm i -g hyperswarm-web
-
-# Run it! Default port is 4977 (HYPR on a phone pad)
-hyperswarm-web
-
-# Run it with a custom port
-hyperswarm-web --port 42069
-```
-
-### Running as a Linux service with SystemD
+## Installation
 
 ```bash
-sudo cat << EOF > /etc/systemd/system/hyperswarm-web.service
-[Unit]
-Description=Hyperswarm proxy server which webpages can connect to.
-
-[Service]
-Type=simple
-# Check that hyperswarm-web is present at this location
-# If it's not, replace the path with its location
-# You can get the location with 'whereis hyperswarm-web'
-# Optionally add a --port parameter if you don't want 4977
-ExecStart=/usr/local/bin/hyperswarm-web
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo chmod 644 /etc/systemd/system/hyperswarm-web.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable hyperswarm-web
-sudo systemctl start hyperswarm-web
-
-sudo systemctl status hyperswarm-web
+npm install hyperswarm-web
 ```
+
+## Key Improvements in v3.0.0
+
+### Topic Handling
+- Enhanced topic conversion logic
+- Supports multiple input types (string, Buffer, Uint8Array)
+- Improved type conversion and hashing mechanisms
+
+### DHT Initialization
+- Flexible DHT node initialization
+- Support for direct DHT node assignment in testing scenarios
+- Improved error handling during DHT setup
+
+### Connection Management
+- More robust error handling
+- Flexible connection methods
+- Added logging for connection failures
+
+## Dependencies
+
+- `@hyperswarm/dht`: Core DHT functionality
+- `simple-peer-light`: Lightweight WebRTC peer connections
+- `b4a`: Buffer abstraction library
+
+## Testing
+
+Comprehensive test suite covering:
+- Basic initialization
+- DHT integration
+- Topic handling
+- Peer discovery and connection
+
+## Security
+
+- Secure peer discovery via DHT
+- Supports ephemeral connections
+- Basic firewall mechanism
+
+## Usage Example
+
+```javascript
+const HyperswarmWeb = require('hyperswarm-web')
+
+// Create a new swarm
+const swarm = new HyperswarmWeb()
+
+// Join a topic
+const discovery = await swarm.join('my-cool-topic')
+
+// Handle peer connections
+discovery.on('connection', (connection) => {
+  // Peer connection established
+})
+```
+
+## Environment Support
+
+- Node.js compatible
+- Web browser support (with limitations)
+- Server and client-side usage
+
+## Roadmap
+
+- Improve WebRTC signaling
+- Add more comprehensive error logging
+- Enhance documentation
+- Develop more complex connection scenarios
+
+## Contributing
+
+Contributions are welcome! Please check our issues page for current tasks and improvements.
+
+## License
+
+MIT License

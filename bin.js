@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 
 const HyperswarmServer = require('./server')
-
 const http = require('http')
 const send = require('send')
 const path = require('path')
+const minimist = require('minimist')
 
-const argv = require('minimist')(process.argv.slice(2))
+const argv = minimist(process.argv.slice(2))
 
 const DEFAULT_PORT = 4977 // HYPR on a cellphone keypad
 
+const __filename = require('url').fileURLToPath(import.meta.url)
+const __dirname = path.join(__filename, '..')
 const INDEX_HTML_LOCATION = path.join(__dirname, 'index.html')
 
 const server = http.createServer(function onRequest (req, res) {

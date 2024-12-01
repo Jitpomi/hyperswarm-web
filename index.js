@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import DHT from '@hyperswarm/dht'
 import b4a from 'b4a'
 import crypto from 'crypto'
+import Peer from 'simple-peer'
 
 const DEFAULT_BOOTSTRAP = [
   'wss://bootstrap1.hyperdht.org',
@@ -30,6 +31,9 @@ export default class HyperswarmWeb extends EventEmitter {
     this.discoveries = new Map()
     this.destroyed = false
 
+    // Initialize connections set
+    this.connections = new Set()
+
     // Initialize key pair
     this.keyPair = this.opts.keyPair || this._generateKeyPair()
 
@@ -40,7 +44,6 @@ export default class HyperswarmWeb extends EventEmitter {
     this.maxPeers = this.opts.maxPeers
     this.webrtcOpts = this.opts.webrtc
     this.dht = null
-    this.connections = new Set()
 
     // Simulate a mock connection for testing
     if (process.env.NODE_ENV === 'test') {
@@ -405,70 +408,107 @@ export default class HyperswarmWeb extends EventEmitter {
   }
 
   async _webrtcConnect(peer, opts = {}) {
-    // Implement WebRTC connection logic
-    // This is a placeholder and should be replaced with actual WebRTC implementation
     return new Promise((resolve, reject) => {
-      // Simulated WebRTC connection
-      setTimeout(() => {
-        reject(new Error('WebRTC connection not implemented'))
-      }, 1000)
+      // Merge default WebRTC configuration
+      const webrtcConfig = {
+        ...this.webrtcOpts.config,
+        initiator: opts.initiator || false,
+        trickle: true,
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
+
+      // Create WebRTC peer connection
+      const peerConnection = new Peer(webrtcConfig)
+
+      // Track connection state
+      let connectionTimeout = setTimeout(() => {
+        peerConnection.destroy()
+        reject(new Error('WebRTC connection timeout'))
+      }, 10000)  // 10-second timeout
+
+      // Signal handling
+      peerConnection.on('signal', (signalData) => {
+        // Emit signal data for external signaling mechanism
+        this.emit('webrtc:signal', {
+          peer: peer,
+          signalData: signalData
+        })
+      })
+
+      // Connection established
+      peerConnection.on('connect', () => {
+        clearTimeout(connectionTimeout)
+        
+        const connectionInfo = {
+          remotePublicKey: peer,
+          protocol: 'webrtc',
+          connection: peerConnection
+        }
+
+        this.connections.add(peerConnection)
+        resolve(connectionInfo)
+      })
+
+      // Error handling
+      peerConnection.on('error', (err) => {
+        clearTimeout(connectionTimeout)
+        console.warn('WebRTC Connection Error:', err)
+        peerConnection.destroy()
+        reject(err)
+      })
+
+      // Cleanup on destroy
+      peerConnection.on('close', () => {
+        this.connections.delete(peerConnection)
+      })
+
+      // Optional: Add external signal data
+      if (opts.signalData) {
+        peerConnection.signal(opts.signalData)
+      }
     })
   }
 
+  // Enhanced signaling method for external signal exchange
+  async signal(signalData) {
+    if (!signalData || !signalData.peer) {
+      throw new Error('Invalid signal data')
+    }
+
+    try {
+      await this._webrtcConnect(signalData.peer, { 
+        signalData: signalData.signalData 
+      })
+    } catch (err) {
+      console.warn('Signal processing error:', err)
+      throw err
+    }
+  }
+
+  // Cleanup method to destroy all connections
   async destroy() {
-    // Prevent multiple destroy calls
-    if (this.destroyed) return
-
-    // Mark as destroyed
     this.destroyed = true
-
-    // Destroy all discoveries
-    const destroyPromises = []
-    for (const [topicKey, discovery] of Array.from(this.discoveries.entries())) {
-      if (discovery && discovery.destroy && typeof discovery.destroy === 'function') {
-        destroyPromises.push(
-          Promise.resolve(discovery.destroy()).catch(err => {
-            console.warn(`Discovery destroy error for topic ${topicKey}:`, err)
-          })
-        )
-      }
-    }
-
-    // Wait for all discoveries to be destroyed
-    await Promise.allSettled(destroyPromises)
-
-    // Close all active connections
-    for (const connection of Array.from(this.connections)) {
+    
+    // Close all WebRTC connections
+    for (const connection of this.connections) {
       try {
-        if (connection && connection.destroy) {
-          connection.destroy()
-        }
+        connection.destroy()
       } catch (err) {
-        console.warn('Connection destroy error:', err)
+        console.warn('Error destroying connection:', err)
       }
     }
-
-    // Destroy DHT
-    if (this.dht) {
-      try {
-        await this.dht.destroy()
-      } catch (err) {
-        console.warn('DHT destroy error:', err)
-      }
-      this.dht = null
-    }
-
-    // Clear all state
-    this.topics.clear()
-    this.discoveries.clear()
-    this.peers.clear()
+    
+    // Clear connections set
     this.connections.clear()
 
-    // Reset other state variables
-    this.bootstrap = []
-    this.keyPair = null
-    this.maxPeers = 0
-    this.webrtcOpts = {}
+    // Destroy DHT if exists
+    if (this.dht) {
+      await this.dht.destroy()
+      this.dht = null
+    }
 
     // Emit destroy event
     this.emit('destroy')

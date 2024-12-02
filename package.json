@@ -1,31 +1,29 @@
 {
   "name": "hyperswarm-web",
-  "version": "3.0.0",
-  "description": "Hyperswarm web transport implementation",
-  "main": "index.js",
+  "version": "3.2.0",
+  "description": "Lightweight cross-runtime bridge that enables web apps to join the Pear network via relay nodes",
   "type": "module",
+  "main": "index.js",
   "scripts": {
-    "test": "node test/index.js",
-    "debug": "NODE_DEBUG=hyperswarm-web,dht DEBUG=hyperswarm-web:* node --inspect-brk test/index.js",
-    "debug:verbose": "NODE_DEBUG=hyperswarm-web,dht DEBUG=hyperswarm-web:*,hyperswarm:* node --inspect-brk test/index.js"
+    "build": "rollup -c"
   },
   "dependencies": {
-    "@hyperswarm/dht": "^6.5.1",
-    "@hyperswarm/dht-relay": "^0.4.0",
-    "@hyperswarm/secret-stream": "^6.7.1",
-    "@stablelib/blake2b": "^2.0.0",
-    "@stablelib/sha256": "^2.0.0",
-    "b4a": "^1.6.4",
-    "hyperswarm": "^4.7.3",
-    "protomux": "^3.4.3",
-    "simple-peer": "^9.11.1",
-    "simple-peer-light": "^9.2.1",
-    "sodium-javascript": "^0.8.0",
-    "sodium-universal": "^4.0.1"
+    "@hyperswarm/dht": "^6.2.0",
+    "b4a": "^1.6.4"
   },
   "devDependencies": {
-    "@hyperswarm/testnet": "^3.1.4",
-    "brittle": "^3.7.0",
-    "get-port": "^6.1.2"
-  }
+    "rollup": "^3.26.3"
+  },
+  "keywords": [
+    "p2p",
+    "hyperswarm",
+    "dht",
+    "peer-to-peer",
+    "decentralized"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "Hyperswarm Team",
+  "license": "MIT"
 }

@@ -18,7 +18,7 @@ HyperswarmWeb creates a bridge between web applications and Pear runtime apps us
 
 ```
 +-------------+       +------------------------+       +-------------+
-|   Web App   | <---> | Hyperswarm DHT Network | <--> | Pear App    |
+|   Web App   | <---> | Hyperswarm DHT Network | <-->  | Pear App    |
 +-------------+       +------------------------+       +-------------+
        |                    (Common Topic)                   |
        +-----------------------------------------------------+
@@ -29,7 +29,7 @@ HyperswarmWeb creates a bridge between web applications and Pear runtime apps us
 
 1. **Topic Announcement and Discovery**
 ```
-+-------------+                                      +-------------+
++-------------+                                     +-------------+
 |   Web App   |                                     |  Pear App   |
 +-------------+                                     +-------------+
       |                +------------+                    |
@@ -44,7 +44,7 @@ HyperswarmWeb creates a bridge between web applications and Pear runtime apps us
 2. **Web-to-Pear Connection**
 ```
 +-------------+       +-----------------+       +-------------+
-|   Web App   | <---> |  P2P Protocol  | <--> |  Pear App   |
+|   Web App   | <---> |  P2P Protocol   |  <--> |  Pear App   |
 +-------------+       +-----------------+       +-------------+
      Browser                DHT              Pear Runtime
 ```
@@ -182,15 +182,15 @@ swarm.on('update', () => {
 |   Web App A       |     |   Web App B       |
 | HyperswarmWeb     |     | HyperswarmWeb     |
 | (with Relay Nodes)|     | (with Relay Nodes)|
-+--------+----------+     +----------+--------+
++--------+----------+     +-----------+-------+
          |                            |
          |   HyperswarmWeb            |
          |   WebSocket Relay Nodes    |
-         +----------------------------+
-                     |
-                     | Shared Topic
-                     |
-+-------------------+     +-------------------+
+         +-------------+-------------+
+                       |
+                       | Shared Topic
+                       |
++-------------------+ -+- +-------------------+
 |   Pear App C      |     |   Pear App D      |
 | Hyperswarm        |     |  Hyperswarm       |
 +-------------------+     +-------------------+

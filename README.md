@@ -184,8 +184,8 @@ swarm.on('update', () => {
 | (with Relay Nodes)|     | (with Relay Nodes)|
 +--------+----------+     +----------+--------+
          |                            |
-         |   HyperswarmWeb             |
-         |   WebSocket Relay Nodes     |
+         |   HyperswarmWeb            |
+         |   WebSocket Relay Nodes    |
          +----------------------------+
                      |
                      | Shared Topic

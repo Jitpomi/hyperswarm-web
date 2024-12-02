@@ -79,11 +79,11 @@ HyperswarmWeb creates a bridge between web applications and Pear runtime apps us
 | Relay Nodes       |     | Relay Nodes       |
 +-------------------+     +-------------------+
          |                            |
-         +----------+----------+
-                    |
-            Pear Network DHT
-                    |
-+-------------------+     +-------------------+
+         +-------------+--------------+
+                       |
+                Pear Network DHT
+                       |
++-------------------+--+--+-------------------+
 |   Pear App C      |     |   Pear App D      |
 | (Pear Runtime)    |     | (Pear Runtime)    |
 +-------------------+     +-------------------+

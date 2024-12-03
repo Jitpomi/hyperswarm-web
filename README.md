@@ -141,9 +141,9 @@ sequenceDiagram
     Web->>Relay: Initial WebSocket Connection
     Relay->>Pear: Signaling & NAT Info Exchange
     Note over Web,Relay,Pear: NAT Traversal (Hole-punching)
-    Web-->>Pear: Direct P2P Connection Established
+    Web->>Pear: Direct P2P Connection Established
     Note over Web,Pear: Relay nodes no longer needed
-    Web<->Pear: Secure End-to-End Encrypted Communication
+    Web-->Pear: Secure End-to-End Encrypted Communication
 ```
 
 ### Connection Flow Details

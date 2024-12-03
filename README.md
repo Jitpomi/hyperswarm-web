@@ -11,7 +11,6 @@ HyperswarmWeb is a specialized TypeScript library that enables seamless peer-to-
 - [Usage](#usage)
 - [Web Application Example](#web-application-example)
 - [Pear Runtime Application Example](#pear-runtime-application-example)
-- [Advanced Usage](#advanced-usage)
 - [API Documentation](#api-documentation)
 - [Security Considerations](#security-considerations)
 - [Real-World Use Cases](#real-world-use-cases)
@@ -42,10 +41,10 @@ graph TB
     end
     PR <--> PA
     DN <--> P2P
-    style PR fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
-    style DN fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
-    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
-    style P2P fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    classDef pear fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    classDef network fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    class PR,PA pear
+    class DN,P2P network
 ```
 
 The Pear Runtime is a decentralized application platform that allows developers to build and run peer-to-peer applications without relying on centralized servers. PearApps are applications designed to operate within this environment, leveraging the decentralized network for communication and data sharing.
@@ -65,10 +64,14 @@ graph TB
         HW <--> PA[Pear App<br>Pear Runtime]
         HW --> DHT[Hyperswarm DHT<br>Network]
     end
-    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
-    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
-    style HW fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
-    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    classDef web fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    classDef pear fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    classDef bridge fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
+    classDef network fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    class WA web
+    class PA pear
+    class HW bridge
+    class DHT network
 ```
 
 HyperswarmWeb bridges web applications and Pear runtime apps by leveraging the same underlying Hyperswarm protocol used in Pear applications.
@@ -90,45 +93,41 @@ graph TB
         RN --> DHT
         PA --> DHT
     end
-    style WB fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
-    style RN fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
-    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
-    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    classDef web fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    classDef pear fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    classDef bridge fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
+    classDef network fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    class WB web
+    class PA pear
+    class RN bridge
+    class DHT network
 ```
 
 ### Network Flow
 1. **Topic Announcement and Discovery**
 ```mermaid
 sequenceDiagram
-    participant WA as Web App
+    participant Web as Web App
     participant DHT as DHT Topic Discovery
-    participant PA as Pear App
+    participant Pear as Pear App
     
-    WA->>DHT: Join Topic
-    PA->>DHT: Join Topic
-    DHT->>WA: Peer Discovery
-    DHT->>PA: Peer Discovery
-    
-    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
-    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
-    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    Web->>DHT: Join Topic
+    Pear->>DHT: Join Topic
+    DHT->>Web: Peer Discovery
+    DHT->>Pear: Peer Discovery
 ```
 
 2. **Connection Establishment**
 ```mermaid
 sequenceDiagram
-    participant WA as Web App
-    participant RN as Relay Nodes
-    participant PA as Pear App
+    participant Web as Web App
+    participant Relay as Relay Nodes
+    participant Pear as Pear App
     
-    WA->>RN: WebSocket Connection
-    RN->>PA: Initial Connection
-    Note over WA,PA: Hole-punching
-    WA-->PA: Direct P2P Connection
-    
-    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
-    style RN fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
-    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    Web->>Relay: WebSocket Connection
+    Relay->>Pear: Initial Connection
+    Note over Web,Pear: Hole-punching
+    Web-->>Pear: Direct P2P Connection
 ```
 
 ## Installation
@@ -225,7 +224,15 @@ HyperswarmWeb's API closely mirrors that of the standard Hyperswarm library, wit
 
 ### Constructor Options
 ```typescript
-new HyperswarmWeb(options?: HyperswarmWebOptions)
+interface HyperswarmWebOptions {
+  maxPeers?: number;
+  bootstrap?: string[];
+}
+
+const swarm = new HyperswarmWeb({
+  maxPeers: 24,
+  bootstrap: ['wss://relay1.hyperswarm.org', 'wss://relay2.hyperswarm.org']
+});
 ```
 
 Parameters:

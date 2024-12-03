@@ -42,6 +42,10 @@ graph TB
     end
     PR <--> PA
     DN <--> P2P
+    style PR fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    style DN fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    style P2P fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
 ```
 
 The Pear Runtime is a decentralized application platform that allows developers to build and run peer-to-peer applications without relying on centralized servers. PearApps are applications designed to operate within this environment, leveraging the decentralized network for communication and data sharing.
@@ -61,10 +65,10 @@ graph TB
         HW <--> PA[Pear App<br>Pear Runtime]
         HW --> DHT[Hyperswarm DHT<br>Network]
     end
-    style WA fill:#f9f,stroke:#333,stroke-width:2px
-    style PA fill:#bbf,stroke:#333,stroke-width:2px
-    style HW fill:#fb7,stroke:#333,stroke-width:2px
-    style DHT fill:#bfb,stroke:#333,stroke-width:2px
+    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    style HW fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
+    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
 ```
 
 HyperswarmWeb bridges web applications and Pear runtime apps by leveraging the same underlying Hyperswarm protocol used in Pear applications.
@@ -86,10 +90,10 @@ graph TB
         RN --> DHT
         PA --> DHT
     end
-    style WB fill:#f9f,stroke:#333,stroke-width:2px
-    style RN fill:#fb7,stroke:#333,stroke-width:2px
-    style PA fill:#bbf,stroke:#333,stroke-width:2px
-    style DHT fill:#bfb,stroke:#333,stroke-width:2px
+    style WB fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    style RN fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
+    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
+    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### Network Flow
@@ -104,6 +108,10 @@ sequenceDiagram
     PA->>DHT: Join Topic
     DHT->>WA: Peer Discovery
     DHT->>PA: Peer Discovery
+    
+    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    style DHT fill:#e1f7d5,stroke:#333,stroke-width:2px,color:#000
+    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
 ```
 
 2. **Connection Establishment**
@@ -117,6 +125,10 @@ sequenceDiagram
     RN->>PA: Initial Connection
     Note over WA,PA: Hole-punching
     WA-->PA: Direct P2P Connection
+    
+    style WA fill:#ffe7e7,stroke:#333,stroke-width:2px,color:#000
+    style RN fill:#fff3d4,stroke:#333,stroke-width:2px,color:#000
+    style PA fill:#d4e6ff,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ## Installation

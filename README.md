@@ -140,7 +140,8 @@ sequenceDiagram
     
     Web->>Relay: Initial WebSocket Connection
     Relay->>Pear: Signaling & NAT Info Exchange
-    Note over Web,Relay,Pear: NAT Traversal (Hole-punching)
+    Note over Web: NAT Traversal (Hole-punching) begins
+    Note over Pear: NAT Traversal (Hole-punching) begins
     Web->>Pear: Direct P2P Connection Established
     Note over Web,Pear: Relay nodes no longer needed
     Web-->Pear: Secure End-to-End Encrypted Communication

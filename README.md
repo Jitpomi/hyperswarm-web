@@ -107,27 +107,43 @@ graph TB
 1. **Topic Announcement and Discovery**
 ```mermaid
 sequenceDiagram
+    box Web Platform #ffe7e7
     participant Web as Web App
+    end
+    box DHT Network #e1f7d5
     participant DHT as DHT Topic Discovery
+    end
+    box Pear Platform #d4e6ff
     participant Pear as Pear App
+    end
     
     Web->>DHT: Join Topic
     Pear->>DHT: Join Topic
     DHT->>Web: Peer Discovery
     DHT->>Pear: Peer Discovery
+    
+    Note over Web,Pear: Peers discovered through DHT
 ```
 
 2. **Connection Establishment**
 ```mermaid
 sequenceDiagram
+    box Web Platform #ffe7e7
     participant Web as Web App
+    end
+    box Bridge Layer #fff3d4
     participant Relay as Relay Nodes
+    end
+    box Pear Platform #d4e6ff
     participant Pear as Pear App
+    end
     
     Web->>Relay: WebSocket Connection
     Relay->>Pear: Initial Connection
     Note over Web,Pear: Hole-punching
     Web-->>Pear: Direct P2P Connection
+    
+    Note over Web,Pear: Secure end-to-end encrypted connection established
 ```
 
 ## Installation

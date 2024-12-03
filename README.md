@@ -1,501 +1,266 @@
 # HyperswarmWeb
 
-HyperswarmWeb is a specialized library designed to enable seamless peer-to-peer connectivity between web applications and Pear runtime apps. It leverages the Hyperswarm DHT protocol to create a bridge between web-based and Pear-based applications in a decentralized network.
+HyperswarmWeb is a specialized TypeScript library that enables seamless peer-to-peer (P2P) connectivity between web applications and Pear Runtime apps. It bridges the gap between browser environments and the decentralized network provided by the Hyperswarm Distributed Hash Table (DHT), facilitating direct P2P communication across different platforms.
+
+## Table of Contents
+- [Features](#features)
+- [Introduction to Pear Runtime](#introduction-to-pear-runtime)
+- [How HyperswarmWeb Works](#how-hyperswarmweb-works)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Web Application Example](#web-application-example)
+- [Pear Runtime Application Example](#pear-runtime-application-example)
+- [Advanced Usage](#advanced-usage)
+- [API Documentation](#api-documentation)
+- [Security Considerations](#security-considerations)
+- [Real-World Use Cases](#real-world-use-cases)
+- [Performance and Scalability](#performance-and-scalability)
+- [Error Handling and Troubleshooting](#error-handling-and-troubleshooting)
+- [Testing and Debugging](#testing-and-debugging)
+- [Compatibility Notes](#compatibility-notes)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
+- **Seamless Web-to-Pear Runtime Connectivity**: Enables direct P2P connections between web browsers and Pear apps.
+- **Decentralized Peer Discovery**: Utilizes the Hyperswarm DHT for efficient and decentralized peer discovery.
+- **Cross-Runtime Communication**: Facilitates communication across web browsers and Node.js/Pear runtime environments.
+- **Relay Nodes for Initial Connections**: Overcomes browser networking limitations using relay nodes and hole-punching.
+- **Event-Driven Architecture**: Provides a simple API with events for connections, data, and peer updates.
+- **TypeScript Support**: Written in TypeScript, offering type safety and ES Module syntax.
+- **End-to-End Encryption**: Secure communication using the Noise protocol.
+- **Scalable and Efficient**: Designed to handle multiple peer connections with optimal performance.
 
-- Seamless web-to-Pear runtime connectivity
-- Decentralized peer discovery using Hyperswarm DHT
-- Simple topic-based peer connections
-- Event-driven architecture
-- Lightweight and minimal dependencies
+## Introduction to Pear Runtime
+
+```mermaid
+graph TB
+    subgraph PearEnv[Pear Runtime Environment]
+        PR[Pear Runtime] <--> DN[Decentralized Network]
+        PA[PearApps] <--> P2P[P2P Protocol]
+    end
+    PR <--> PA
+    DN <--> P2P
+```
+
+The Pear Runtime is a decentralized application platform that allows developers to build and run peer-to-peer applications without relying on centralized servers. PearApps are applications designed to operate within this environment, leveraging the decentralized network for communication and data sharing.
+
+Pear Runtime provides:
+- **Decentralization**: Eliminates the need for central servers.
+- **Scalability**: Handles a growing number of peers efficiently.
+- **Security**: Ensures secure communication between peers.
+- **Interoperability**: Allows integration with various platforms and technologies.
+
+## How HyperswarmWeb Works
+
+```mermaid
+graph TB
+    subgraph Bridge[Bridge Layer]
+        WA[Web App<br>Browser] <--> HW[HyperswarmWeb<br>Bridge Layer]
+        HW <--> PA[Pear App<br>Pear Runtime]
+        HW --> DHT[Hyperswarm DHT<br>Network]
+    end
+    style WA fill:#f9f,stroke:#333,stroke-width:2px
+    style PA fill:#bbf,stroke:#333,stroke-width:2px
+    style HW fill:#fb7,stroke:#333,stroke-width:2px
+    style DHT fill:#bfb,stroke:#333,stroke-width:2px
+```
+
+HyperswarmWeb bridges web applications and Pear runtime apps by leveraging the same underlying Hyperswarm protocol used in Pear applications.
+
+### Key Differences
+While HyperswarmWeb shares much of its functionality with the standard Hyperswarm library, it introduces specific mechanisms to overcome browser networking limitations:
+
+- **Relay Nodes and Hole-Punching**: Uses WebSocket relay nodes to facilitate initial connections and perform NAT traversal (hole-punching) to establish direct P2P connections.
+- **Browser Compatibility**: Adapts Hyperswarm functionalities to work within browser environments that lack raw TCP/UDP socket access.
 
 ## Architecture
 
-### Web-to-Pear Runtime Bridge
-
-HyperswarmWeb creates a bridge between web applications and Pear runtime apps using the Hyperswarm DHT network for peer discovery.
-
-```
-+-------------+       +------------------------+       +-------------+
-|   Web App   | <---> | Hyperswarm DHT Network | <-->  | Pear App    |
-+-------------+       +------------------------+       +-------------+
-       |                    (Common Topic)                   |
-       +-----------------------------------------------------+
-                         Direct P2P Connection
+```mermaid
+graph TB
+    subgraph Network[Network Architecture]
+        WB[Web Browser] <--> RN[Relay Nodes<br>WebSocket]
+        RN <--> PA[Pear App]
+        WB --> DHT[Hyperswarm DHT Network<br>Peer Discovery & Topic-based Communication]
+        RN --> DHT
+        PA --> DHT
+    end
+    style WB fill:#f9f,stroke:#333,stroke-width:2px
+    style RN fill:#fb7,stroke:#333,stroke-width:2px
+    style PA fill:#bbf,stroke:#333,stroke-width:2px
+    style DHT fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
 ### Network Flow
-
 1. **Topic Announcement and Discovery**
-```
-+-------------+                                     +-------------+
-|   Web App   |                                     |  Pear App   |
-+-------------+                                     +-------------+
-      |                +------------+                    |
-      +--------------> | Join Topic | <------------------+
-      |                +------------+                    |
-      |                      |                           |
-      |              +---------------+                   |
-      +------------> | DHT Broadcast | <-----------------+
-                     +---------------+
-```
-
-2. **Web-to-Pear Connection**
-```
-+-------------+       +-----------------+       +-------------+
-|   Web App   | <---> |  P2P Protocol   |  <--> |  Pear App   |
-+-------------+       +-----------------+       +-------------+
-     Browser                DHT              Pear Runtime
+```mermaid
+sequenceDiagram
+    participant WA as Web App
+    participant DHT as DHT Topic Discovery
+    participant PA as Pear App
+    
+    WA->>DHT: Join Topic
+    PA->>DHT: Join Topic
+    DHT->>WA: Peer Discovery
+    DHT->>PA: Peer Discovery
 ```
 
-## Runtime Compatibility
-
-### Library Selection Guide
-
-- **Web Applications**: Use `HyperswarmWeb`
-- **Pear Runtime Applications**: Use standard `Hyperswarm`
-
-### Why Two Different Libraries?
-
-`HyperswarmWeb` is a specialized implementation that bridges web applications to the Pear network:
-- Relay nodes enable web apps to join Pear network
-- Overcome browser networking limitations
-- Provide seamless cross-runtime connectivity
-
-`Hyperswarm` remains the standard implementation for Node.js and Pear runtime environments.
-
-### Core Concept: Web to Pear Network Bridge
-
+2. **Connection Establishment**
+```mermaid
+sequenceDiagram
+    participant WA as Web App
+    participant RN as Relay Nodes
+    participant PA as Pear App
+    
+    WA->>RN: WebSocket Connection
+    RN->>PA: Initial Connection
+    Note over WA,PA: Hole-punching
+    WA-->PA: Direct P2P Connection
 ```
-+-------------------+     +-------------------+
-|   Web App A       |     |   Web App B       |
-| (Browser)         |     | (Browser)         |
-+--------+----------+     +----------+--------+
-         |                            |
-         v                            v
-+-------------------+     +-------------------+
-| HyperswarmWeb     |     | HyperswarmWeb     |
-| Relay Nodes       |     | Relay Nodes       |
-+-------------------+     +-------------------+
-         |                            |
-         +-------------+--------------+
-                       |
-                Pear Network DHT
-                       |
-+-------------------+--+--+-------------------+
-|   Pear App C      |     |   Pear App D      |
-| (Pear Runtime)    |     | (Pear Runtime)    |
-+-------------------+     +-------------------+
-
-Connection Workflow:
-1. Web apps connect via relay nodes
-2. Relay nodes join Pear network DHT
-3. Enable cross-runtime communication
-4. Seamless peer discovery
-```
-
-### How HyperswarmWeb Works
-
-- **Relay Nodes**: Core mechanism to connect web apps
-- **Purpose**: Bridge web browsers to Pear network
-- **Mechanism**: 
-  1. Establish WebSocket connections
-  2. Participate in Pear network DHT
-  3. Enable peer discovery for web apps
-
-#### Key Features
-
-- **Web App Connectivity**: Connect browsers to distributed network
-- **DHT Participation**: Full integration with Hyperswarm network
-- **Runtime Agnostic**: Consistent peer discovery across platforms
-
-### Relay Node Functionality
-
-- Translate browser limitations to network capabilities
-- Provide WebSocket-based network access
-- Secure, encrypted connection tunnels
-- Minimal overhead, stateless forwarding
-
-### Cross-Runtime Communication
-
-- Web apps can discover and connect to Pear runtime peers
-- Consistent topic-based peer discovery
-- Seamless network participation
-
-### Recommended Usage
-
-```javascript
-// Web Application
-import HyperswarmWeb from 'hyperswarm-web'
-
-const topic = 'cross-runtime-collaboration'
-const swarm = new HyperswarmWeb()
-
-// Automatically connects via relay nodes
-const discovery = swarm.join(topic)
-
-swarm.on('connection', (socket, peerInfo) => {
-  // Connect to peers across runtimes
-})
-```
-
-### API Consistency
-
-Both libraries support:
-```javascript
-// Identical method signatures
-const swarm = new HyperswarmWeb(options)  // Web
-const swarm = new Hyperswarm(options)     // Pear/Node
-
-// Joining a topic
-const discovery = swarm.join(topic, options)
-await discovery.refresh({ client, server })
-
-// Connection handling
-swarm.on('connection', (socket, peerInfo) => {
-  // Consistent socket interface
-})
-
-// Peer list updates
-swarm.on('update', () => {
-  // Works identically in both libraries
-})
-```
-
-### Key Differences
-
-#### HyperswarmWeb (Web)
-- Adds WebSocket relay support
-- Handles browser networking constraints
-- Lightweight web-specific optimizations
-
-#### Hyperswarm (Pear/Node)
-- Native socket support
-- Full Node.js networking capabilities
-- Direct peer-to-peer connections
-
-### Cross-Runtime Connection Topology
-
-```
-+-------------------+     +-------------------+
-|   Web App A       |     |   Web App B       |
-| HyperswarmWeb     |     | HyperswarmWeb     |
-| (with Relay Nodes)|     | (with Relay Nodes)|
-+--------+----------+     +-----------+-------+
-         |                            |
-         |   HyperswarmWeb            |
-         |   WebSocket Relay Nodes    |
-         +-------------+-------------+
-                       |
-                       | Shared Topic
-                       |
-+-------------------+ -+- +-------------------+
-|   Pear App C      |     |   Pear App D      |
-| Hyperswarm        |     |  Hyperswarm       |
-+-------------------+     +-------------------+
-
-Connection Workflow:
-1. Pear apps connect directly to DHT
-2. HyperswarmWeb provides relay nodes
-3. Shared topic enables cross-runtime discovery
-4. Runtime-agnostic communication
-```
-
-#### Connection Mechanics
-
-- **Discovery**: Hyperswarm DHT tracks all peer locations
-- **HyperswarmWeb**: Provides WebSocket relay infrastructure
-- **Topic**: Shared identifier enables cross-runtime connections
-- **Peer Selection**: Dynamic, based on DHT information
-
-#### Key Interaction Points
-
-1. **Topic Announcement**
-   - Pear apps connect directly to DHT
-   - HyperswarmWeb relay nodes facilitate web app DHT interaction
-   - All peers share common topic
-
-2. **Connection Negotiation**
-   - Pear apps: Direct DHT peer exchange
-   - HyperswarmWeb: Relay nodes facilitate connection metadata
-   - Minimal runtime-specific logic
-
-3. **Connection Establishment**
-   - Pear apps: Direct P2P connections
-   - HyperswarmWeb: Relay node-assisted connections
-
-#### Runtime-Specific Behaviors
-
-- **Web Apps (HyperswarmWeb)**
-  - Integrated WebSocket relay nodes
-  - Bootstrap relay node discovery
-  - Indirect DHT participation
-  - Overcome browser networking limitations
-
-- **Pear Apps (Hyperswarm)**
-  - Direct DHT network participation
-  - Native P2P connections
-  - No relay node dependency
-
-#### HyperswarmWeb Relay Node Characteristics
-
-- Stateless connection forwarding
-- Minimal processing overhead
-- Distributed across Hyperswarm network
-- Provide connectivity bridge for web browsers
-- Secure, encrypted relay tunnels
-
-### Connection Reliability
-
-- **Web Apps**: HyperswarmWeb relay node failover
-- **Pear Apps**: Direct DHT connections
-- **Shared Topic**: Enables cross-runtime discovery
-- **Secure**: Encrypted connection metadata
-
-### Example: Multi-Runtime Peer Discovery
-
-```javascript
-// Web Application
-import HyperswarmWeb from 'hyperswarm-web'
-
-// Pear Runtime Application
-import Hyperswarm from 'hyperswarm'
-
-const topic = 'cross-runtime-collaboration'
-
-// Both work identically for peer discovery
-const swarm = new HyperswarmWeb(options)  // or new Hyperswarm(options)
-const discovery = swarm.join(topic)
-await discovery.refresh({ client: true, server: true })
-
-swarm.on('connection', (socket, peerInfo) => {
-  // Handle connections from any runtime
-})
-```
-
-### Performance and Overhead
-
-- `HyperswarmWeb`: Optimized for web browser performance
-- `Hyperswarm`: Optimized for Node.js and Pear runtime
-- Minimal overhead in cross-runtime communication
-
-### Recommended Usage
-
-1. Use `HyperswarmWeb` for all web application peer discovery
-2. Use `Hyperswarm` for Pear runtime and Node.js applications
-3. Ensure consistent topic names for cross-runtime discovery
-
-## Compatibility Notes
-
-- Minimum Node.js Version: >=16.0.0
-- ES Module support required
-- WebSocket-capable browsers recommended for web applications
 
 ## Installation
 
 ```bash
 npm install hyperswarm-web
 ```
+Note: Ensure that your project supports ES Modules and TypeScript.
 
 ## Usage
 
-### Web Application
-```javascript
-import HyperswarmWeb from 'hyperswarm-web'
+### Web Application Example
+```typescript
+import HyperswarmWeb from 'hyperswarm-web';
+import crypto from 'crypto';
 
-// Create a new instance for web app
-const webSwarm = new HyperswarmWeb({
-  maxPeers: 24, // Optional: maximum number of peers (default: 24)
-  keyPair: null // Optional: custom key pair for DHT
-})
+// Create a new HyperswarmWeb instance
+const swarm = new HyperswarmWeb({
+  maxPeers: 24,
+  bootstrap: ['wss://relay1.hyperswarm.org', 'wss://relay2.hyperswarm.org'],
+});
 
-// Join a topic to connect with Pear apps
-const topic = 'my-pear-app-name'
-await webSwarm.join(topic)
+// Generate a 32-byte topic using SHA-256 hash
+const topic = crypto.createHash('sha256').update('my-pear-app-name').digest();
 
-// Listen for Pear app connections
-webSwarm.on('connection', (connection, info) => {
-  console.log('Connected to Pear app:', info)
-  
-  // Handle connection events
+// Join the topic for peer discovery
+await swarm.join(topic, { announce: true, lookup: true });
+
+// Listen for incoming connections
+swarm.on('connection', (connection, info) => {
+  console.log('Connected to peer:', info);
+
+  // Send data to the peer
+  connection.write('Hello from Web App');
+
+  // Handle incoming data
   connection.on('data', (data) => {
-    console.log('Received from Pear app:', data)
-  })
-})
+    console.log('Received from peer:', data.toString());
+  });
+
+  // Handle connection close
+  connection.on('close', () => {
+    console.log('Connection closed');
+  });
+
+  // Handle errors
+  connection.on('error', (err) => {
+    console.error('Connection error:', err);
+  });
+});
 ```
 
-### Pear Runtime App
-```javascript
-import Hyperswarm from 'hyperswarm'
+### Pear Runtime Application Example
+```typescript
+import Hyperswarm from 'hyperswarm';
+import crypto from 'crypto';
 
-// Create a new instance for Pear app
-const pearSwarm = new Hyperswarm( options)
+// Create a new Hyperswarm instance
+const swarm = new Hyperswarm();
 
-// Join the same topic as web apps
-const topic = 'my-pear-app-name'
-await pearSwarm.join(topic)
+// Generate the same 32-byte topic
+const topic = crypto.createHash('sha256').update('my-pear-app-name').digest();
 
-// Listen for web app connections
-pearSwarm.on('connection', (connection, info) => {
-  console.log('Connected to web app:', info)
-  
-  // Handle connection events
+// Join the topic
+await swarm.join(topic, { announce: true, lookup: true });
+
+// Listen for incoming connections
+swarm.on('connection', (connection, info) => {
+  console.log('Connected to peer:', info);
+
+  // Send data to the peer
+  connection.write('Hello from Pear App');
+
+  // Handle incoming data
   connection.on('data', (data) => {
-    console.log('Received from web app:', data)
-  })
-})
+    console.log('Received from peer:', data.toString());
+  });
+
+  // Handle connection close
+  connection.on('close', () => {
+    console.log('Connection closed');
+  });
+
+  // Handle errors
+  connection.on('error', (err) => {
+    console.error('Connection error:', err);
+  });
+});
 ```
 
-## Advanced Usage Pattern
+## API Documentation
 
-### Multi-Runtime Peer Discovery and Connection
+HyperswarmWeb's API closely mirrors that of the standard Hyperswarm library, with adaptations for browser environments.
 
-```javascript
-const topic = 'common interest'
+### Constructor Options
+```typescript
+new HyperswarmWeb(options?: HyperswarmWebOptions)
+```
 
-// Web app A
-const swarmA = new HyperswarmWeb([options])
+Parameters:
+- `options` (optional):
+  - `maxPeers?: number` - Maximum number of peers (default: 24)
+  - `bootstrap?: string[]` - Array of WebSocket relay URLs
 
-const discoveryA = swarmA.join(topic, [options])
-await discoveryA.refresh({ client, server })
+### Events
+- `'connection'`: Emitted when a new peer connection is established
+- Other events are similar to those in Hyperswarm
 
-swarmA.on('connection', (socket, peerInfo) => {
-  socket.on('data', async (chunk) => {
-    // Handle incoming data from peers
-    console.log('Received data on Web App A:', chunk)
-  })
+## Security Considerations
+HyperswarmWeb provides secure communication between peers using end-to-end encryption based on the Noise protocol framework, similar to Hyperswarm.
 
-  socket.once('close', async () => {
-    // Handle peer disconnection
-    console.log('Connection closed on Web App A')
-  })
+## Real-World Use Cases
+- Decentralized Chat Applications
+- Collaborative Tools
+- Distributed File Sharing
 
-  socket.once('error', (err) => {
-    // Handle connection errors
-    console.error('Connection error on Web App A:', err)
-  })
-})
+## Performance and Scalability
+HyperswarmWeb is designed for optimal performance and scalability in browser environments. Performance considerations are similar to those in Hyperswarm, with additional attention to browser limitations.
 
-swarmA.on('update', () => {
-  // Handle peer list updates
-  console.log('Peer list updated on Web App A')
-})
+## Error Handling and Troubleshooting
+Enable Debug Logging:
+```bash
+DEBUG=hyperswarm* node your-app.js
+```
 
-// Web app B (Similar setup to Web App A)
-const swarmB = new HyperswarmWeb([options])
+## Testing and Debugging
+- Attach Error Listeners: Always attach 'error' event listeners to catch and handle exceptions.
 
-const discoveryB = swarmB.join(topic, [options])
-await discoveryB.refresh({ client, server })
+## Compatibility Notes
+- Node.js Version: Requires Node.js >=16.0.0 for ES Module support
+- TypeScript Support: Fully typed with TypeScript definitions
+- Browser Requirements:
+  - Supports modern browsers with WebSocket capabilities
+  - Compatible with mobile browsers that support WebRTC
 
-swarmB.on('connection', (socket, peerInfo) => {
-  // Connection handling similar to Web App A
-})
+## Contributing
+We welcome contributions from the community!
 
-swarmB.on('update', () => {
-  // Peer list update handling
-})
-
-// Pear app C
-const swarmC = new Hyperswarm([options])
-
-const discoveryC = swarmC.join(topic, [options])
-await discoveryC.refresh({ client, server })
-
-swarmC.on('connection', (socket, peerInfo) => {
-  socket.on('data', async (chunk) => {
-    // Handle incoming data from peers
-    console.log('Received data on Pear App C:', chunk)
-  })
-
-  socket.once('close', async () => {
-    // Handle peer disconnection
-    console.log('Connection closed on Pear App C')
-  })
-
-  socket.once('error', (err) => {
-    // Handle connection errors
-    console.error('Connection error on Pear App C:', err)
-  })
-})
-
-swarmC.on('update', () => {
-  // Handle peer list updates
-  console.log('Peer list updated on Pear App C')
-})
-
-// Pear app D (Similar setup to Pear App C)
-const swarmD = new Hyperswarm([options])
-
-const discoveryD = swarmD.join(topic, [options])
-await discoveryD.refresh({ client, server })
-
-swarmD.on('connection', (socket, peerInfo) => {
-  // Connection handling similar to Pear App C
-})
-
-swarmD.on('update', () => {
-  // Peer list update handling
-})
-
-### Key Concepts
-
-- **Common Topic**: All apps join the same topic for peer discovery
-- **Runtime Agnostic**: Works across web and Pear runtime environments
-- **Flexible Connection Handling**: 
-  - `connection` event for new peer connections
-  - `update` event for peer list changes
-  - Error and close event handlers
-
-### Connection Lifecycle
-
-1. Join a common topic
-2. Refresh discovery (optional client/server modes)
-3. Listen for connections
-4. Handle data, errors, and disconnections
-5. Respond to peer list updates
-
-## API
-
-### `new HyperswarmWeb(options)`
-
-Creates a swarm instance for either web or Pear runtime apps.
-
-Options:
-- `maxPeers`: Maximum number of peers (default: 24)
-- `keyPair`: Custom key pair for DHT (optional)
-- `bootstrap`: Array of bootstrap servers (optional)
-
-### `swarm.join(topic, options)`
-
-Joins a topic in the DHT network to discover peers.
-
-- `topic`: String or Buffer representing the topic
-- `options`:
-  - `announce`: Boolean to control topic announcement (default: true)
-  - `lookup`: Boolean to control topic lookup (default: true)
-
-### `swarm.leave(topic)`
-
-Leaves a previously joined topic.
-
-### `swarm.destroy()`
-
-Cleans up and destroys the swarm instance.
-
-## Events
-
-- `connection`: Emitted when a new peer connection is established between web and Pear apps
-- `peer`: Emitted when a new peer is discovered in the network
-- `close`: Emitted when a peer connection is closed
-
-## Use Cases
-
-- Real-time collaboration between web and Pear apps
-- Decentralized data sharing
-- P2P communication channels
-- Distributed applications spanning web and Pear runtime environments
+Development Setup:
+```bash
+git clone https://github.com/hyperswarm/hyperswarm-web.git
+npm install
+npm test
+```
 
 ## License
-
-MIT
+This project is licensed under the terms of the MIT license. See the LICENSE file for details.

@@ -43,99 +43,36 @@ class HyperswarmWeb extends EventEmitter {
 
   // Comprehensive join method with advanced options
   async join(topic, opts = {}) {
-    if (this.destroyed) throw new Error('Cannot join topic on destroyed swarm')
-    
-    if (this.peers.size >= this.opts.maxPeers) {
-      throw new Error(`Exceeded maximum peer limit of ${this.opts.maxPeers}`)
+    if (this.destroyed) {
+      throw new Error('Instance is destroyed')
     }
 
     const normalizedTopic = typeof topic === 'string' 
       ? b4a.from(topic) 
       : topic
 
+    if (!b4a.isBuffer(normalizedTopic)) {
+      throw new Error('Topic must be a buffer')
+    }
+
     await this.initDHT()
 
-    const server = this.dht.join(normalizedTopic, {
-      announce: opts.announce !== false,
-      lookup: opts.lookup !== false,
+    const discovery = this.dht.join(normalizedTopic, {
+      announce: opts.server !== false,
+      lookup: opts.client !== false,
       localAddress: this.opts.announceLocalAddress
+    })
+
+    discovery.on('peer', (peerInfo) => {
+      const socket = this.dht.connect(peerInfo.publicKey)
+      this.emit('connection', socket, peerInfo)
     })
 
     const topicKey = b4a.toString(normalizedTopic, 'hex')
     this.topics.set(topicKey, normalizedTopic)
-    this._discoveryInstances.set(topicKey, server)
+    this._discoveryInstances.set(topicKey, discovery)
 
-    // Advanced connection handling with comprehensive lifecycle management
-    server.on('connection', async (socket, peerInfo) => {
-      const runtime = this._detectRuntime()
-      const connectionId = b4a.toString(peerInfo.publicKey, 'hex')
-      
-      try {
-        const connection = await this._createConnection(socket, runtime, peerInfo)
-        
-        // Comprehensive peer tracking
-        const peerEntry = {
-          ...peerInfo,
-          connection,
-          runtime,
-          state: ConnectionState.CONNECTED,
-          connectedAt: Date.now()
-        }
-        this.peers.set(connectionId, peerEntry)
-        this._peerConnections.set(connectionId, connection)
-
-        // Emit connection events with detailed metadata
-        this.emit('connection', connection, {
-          ...peerInfo, 
-          runtime,
-          topic: normalizedTopic,
-          connectionId
-        })
-
-        // Trigger update event
-        this.emit('update')
-
-        // Comprehensive connection event handling
-        connection.on('data', (data) => {
-          this.emit('data', data, {
-            runtime,
-            topic: normalizedTopic,
-            ...peerInfo,
-            connectionId
-          })
-        })
-
-        connection.on('close', () => {
-          this._handleConnectionClose(connectionId, peerEntry)
-        })
-
-        connection.on('error', (error) => {
-          this._handleConnectionError(connectionId, error)
-        })
-
-        return connection
-      } catch (error) {
-        this.emit('peer', { 
-          error, 
-          topic: normalizedTopic,
-          peerInfo 
-        })
-        throw error
-      }
-    })
-
-    // Return discovery instance with comprehensive refresh method
-    return {
-      ...server,
-      async refresh(opts = {}) {
-        if (opts.client) await server.client()
-        if (opts.server) await server.server()
-        return server
-      },
-      destroy: async () => {
-        await this.leave(normalizedTopic)
-      }
-    }
+    return discovery
   }
 
   // Advanced connection close handler
@@ -169,77 +106,80 @@ class HyperswarmWeb extends EventEmitter {
 
   // Comprehensive leave method
   async leave(topic) {
+    if (this.destroyed) {
+      throw new Error('Instance is destroyed')
+    }
+
     const normalizedTopic = typeof topic === 'string' 
       ? b4a.from(topic) 
       : topic
 
+    if (!b4a.isBuffer(normalizedTopic)) {
+      throw new Error('Topic must be a buffer')
+    }
+
     const topicKey = b4a.toString(normalizedTopic, 'hex')
-    
-    if (this.topics.has(topicKey)) {
-      const discoveryInstance = this._discoveryInstances.get(topicKey)
-      
-      if (discoveryInstance) {
-        await discoveryInstance.destroy()
-        this._discoveryInstances.delete(topicKey)
-      }
+    const server = this._discoveryInstances.get(topicKey)
 
-      await this.dht?.leave(normalizedTopic)
-      this.topics.delete(topicKey)
-      
-      // Remove associated peers
-      for (const [key, peer] of this.peers.entries()) {
-        if (b4a.toString(peer.topic, 'hex') === topicKey) {
-          this.peers.delete(key)
-          this._peerConnections.delete(key)
+    if (server) {
+      // Remove all listeners before destroying
+      server.removeAllListeners()
+      await server.destroy()
+      this._discoveryInstances.delete(topicKey)
+    }
+
+    this.topics.delete(topicKey)
+
+    // Clean up any peers associated with this topic
+    for (const [peerId, peer] of this.peers.entries()) {
+      if (peer.topic === topicKey) {
+        if (peer.connection) {
+          await peer.connection.destroy()
         }
+        this.peers.delete(peerId)
+        this._peerConnections.delete(peerId)
       }
-
-      // Notify relay nodes
-      this._broadcastToRelays({
-        type: 'topic:leave',
-        topic: topicKey
-      })
-
-      this.emit('update')
     }
   }
 
   // Comprehensive destroy method
   async destroy() {
     if (this.destroyed) return
+
+    // Mark as destroyed first to prevent new operations
     this.destroyed = true
 
-    // Leave all topics
+    // Clean up all topics
+    const leavePromises = []
     for (const topic of this.topics.values()) {
-      await this.leave(topic)
+      leavePromises.push(this.leave(topic).catch(() => {}))
     }
+    await Promise.all(leavePromises)
 
-    // Close all peer connections
-    for (const connection of this._peerConnections.values()) {
-      try {
-        connection.destroy()
-      } catch {}
+    // Clean up all peers
+    const peerDestroyPromises = []
+    for (const peer of this.peers.values()) {
+      if (peer.connection) {
+        peerDestroyPromises.push(peer.connection.destroy().catch(() => {}))
+      }
     }
+    await Promise.all(peerDestroyPromises)
 
-    // Close relay connections
-    for (const relay of this.relayConnections) {
-      relay.close()
-    }
-    this.relayConnections.clear()
-
-    // Destroy DHT
+    // Clean up DHT
     if (this.dht) {
-      await this.dht.destroy()
-      this.dht = null
+      await this.dht.destroy().catch(() => {})
     }
 
+    // Clear all maps and sets
     this.peers.clear()
     this.topics.clear()
     this._discoveryInstances.clear()
     this._peerConnections.clear()
     this._connectionQueue.clear()
+    this.relayConnections.clear()
 
-    this.emit('close')
+    // Remove all event listeners
+    this.removeAllListeners()
   }
 
   // Runtime-specific connection creation

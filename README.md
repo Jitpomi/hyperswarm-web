@@ -138,13 +138,35 @@ sequenceDiagram
     participant Pear as Pear App
     end
     
-    Web->>Relay: WebSocket Connection
-    Relay->>Pear: Initial Connection
-    Note over Web,Pear: Hole-punching
-    Web-->>Pear: Direct P2P Connection
-    
-    Note over Web,Pear: Secure end-to-end encrypted connection established
+    Web->>Relay: Initial WebSocket Connection
+    Relay->>Pear: Signaling & NAT Info Exchange
+    Note over Web,Relay,Pear: NAT Traversal (Hole-punching)
+    Web-->>Pear: Direct P2P Connection Established
+    Note over Web,Pear: Relay nodes no longer needed
+    Web<->Pear: Secure End-to-End Encrypted Communication
 ```
+
+### Connection Flow Details
+
+1. **Initial Connection Phase**
+   - Web browsers connect to relay nodes via WebSocket
+   - Relay nodes facilitate initial connection setup and NAT traversal
+   - Peers exchange connection information and NAT details
+
+2. **NAT Traversal (Hole-punching)**
+   - Relay nodes help coordinate NAT traversal between peers
+   - Both peers attempt to establish direct connections
+   - Uses UDP hole-punching techniques where supported
+
+3. **Direct P2P Communication**
+   - Once NAT traversal succeeds, direct P2P connection is established
+   - Relay nodes are only used for initial setup, not for ongoing communication
+   - All data flows directly between peers with end-to-end encryption
+
+4. **Fallback Mechanism**
+   - If direct connection fails, communication continues through relay
+   - Automatic fallback ensures reliable connectivity
+   - Periodic retry of direct connection establishment
 
 ## Installation
 

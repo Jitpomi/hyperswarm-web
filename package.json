@@ -1,87 +1,24 @@
 {
   "name": "hyperswarm-web",
-  "version": "3.2.0",
-  "description": "Lightweight cross-runtime bridge that enables web apps to join the Pear network via relay nodes",
+  "version": "1.0.0",
+  "description": "A library that enables web applications to participate in the Hyperswarm network",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "rollup -c",
-    "test": "vitest run --config vitest.config.js",
-    "test:unit": "vitest run tests/unit --config vitest.config.js",
-    "test:integration": "vitest run tests/integration --config vitest.config.js",
-    "test:performance": "vitest run tests/performance --config vitest.config.js",
-    "test:coverage": "c8 vitest run --config vitest.config.js",
-    "coverage": "c8 --reporter=html --reporter=text vitest run --config vitest.config.js",
-    "coverage:report": "nyc report",
-    "coverage:viz": "node scripts/coverage-viz.js",
-    "test:coverage:detailed": "vitest run --coverage --reporter=verbose"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@hyperswarm/dht": "^6.2.0",
     "b4a": "^1.6.4"
   },
-  "devDependencies": {
-    "@hyperswarm/testnet": "^3.1.4",
-    "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@types/node": "^22.10.1",
-    "@types/sinon": "^17.0.3",
-    "c8": "^10.1.2",
-    "chai": "^5.1.2",
-    "chalk": "^5.3.0",
-    "hyperdht": "^6.20.1",
-    "jsdom": "^25.0.1",
-    "mock-socket": "^9.3.1",
-    "nyc": "^17.1.0",
-    "rollup": "^3.26.3",
-    "sinon": "^19.0.2",
-    "vitest": "^2.1.7",
-    "ws": "^8.18.0"
-  },
+  "devDependencies": {},
   "keywords": [
-    "p2p",
     "hyperswarm",
-    "dht",
-    "peer-to-peer",
-    "decentralized"
+    "p2p",
+    "web",
+    "browser",
+    "dht"
   ],
-  "engines": {
-    "node": ">=16.0.0"
-  },
-  "author": "Hyperswarm Team",
-  "license": "MIT",
-  "vitest": {
-    "environment": "node",
-    "globals": true,
-    "coverage": {
-      "provider": "v8",
-      "reporter": [
-        "text",
-        "html",
-        "lcov",
-        "clover"
-      ],
-      "reportsDirectory": "./coverage",
-      "include": [
-        "index.js",
-        "src/**/*.js"
-      ],
-      "exclude": [
-        "**/node_modules/**",
-        "tests/**",
-        "dist/**",
-        "**/*.d.ts"
-      ],
-      "thresholds": {
-        "lines": 90,
-        "branches": 85,
-        "functions": 90,
-        "statements": 90
-      }
-    },
-    "test": {
-      "include": [
-        "tests/**/*.test.js"
-      ]
-    }
-  }
+  "author": "",
+  "license": "MIT"
 }

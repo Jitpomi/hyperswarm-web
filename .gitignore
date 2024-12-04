@@ -31,6 +31,7 @@ dist/
 
 # IDE and system files
 .vscode/
+.idea/
 *.swp
 *.swo
 .DS_Store
@@ -50,6 +51,7 @@ certs/
 *.key
 *.crt
 *.pem
+*.cert
 *.ca-bundle
 /.idea/
 /certs/

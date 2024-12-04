@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperswarmWeb Chat Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { 
+            margin-bottom: 20px; 
+            padding: 10px; 
+            background: #f5f5f5;
+            display: flex;
+            justify-content: space-between;
+        }
+        .peer-list {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+        .peer {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+        }
+        .peer .type { 
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        .peer .type.web-browser { background: #e3f2fd; }
+        .peer .type.pear-cli { background: #f1f8e9; }
+        .peer .type.pear-desktop { background: #fce4ec; }
+        .peer .type.pear-mobile { background: #fff3e0; }
+        .peer .connection { 
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .peer .connection.direct { background: #c8e6c9; }
+        .peer .connection.relay { background: #fff9c4; }
+        .chat { 
+            border: 1px solid #ddd;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .message.web { background: #e3f2fd; }
+        .message.pear { background: #f1f8e9; }
+        .message.system { background: #f5f5f5; }
+        .input-area {
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        input { flex-grow: 1; padding: 8px; }
+        button { padding: 8px 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HyperswarmWeb Chat Example</h1>
+        <div class="status">
+            <span id="network-status">Connecting to network...</span>
+            <span id="connection-info"></span>
+        </div>
+        <div class="peer-list" id="peer-list">
+            <h3>Connected Peers</h3>
+            <div id="peers"></div>
+        </div>
+        <div class="chat">
+            <div class="messages" id="messages"></div>
+            <div class="input-area">
+                <input type="text" id="message" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import HyperswarmWeb from 'hyperswarm-web';
+        import crypto from 'crypto';
+
+        // Message types
+        const MESSAGE_TYPES = {
+            CHAT: 'chat',
+            PEER_INFO: 'peer_info',
+            CONNECTION_TYPE: 'connection_type',
+            CAPABILITIES: 'capabilities'
+        };
+
+        // Peer types
+        const PEER_TYPES = {
+            WEB: 'web-browser',
+            PEAR_CLI: 'pear-cli',
+            PEAR_DESKTOP: 'pear-desktop',
+            PEAR_MOBILE: 'pear-mobile'
+        };
+
+        // Initialize HyperswarmWeb with relay for browser environment
+        const swarm = new HyperswarmWeb({
+            bootstrap: ['ws://localhost:3400']
+        });
+
+        const networkStatus = document.getElementById('network-status');
+        const connectionInfo = document.getElementById('connection-info');
+        const peersList = document.getElementById('peers');
+
+        // Generate topic for the chat room
+        const topic = crypto.createHash('sha256')
+            .update('hyperswarm-web-chat-example')
+            .digest();
+
+        // Set peer info to identify this client
+        const clientId = crypto.randomBytes(4).toString('hex');
+        swarm.peerInfo = {
+            type: PEER_TYPES.WEB,
+            client: 'chat-example',
+            version: '1.0.0',
+            id: clientId,
+            capabilities: ['text-chat', 'emoji']
+        };
+
+        // Track peer connections
+        const peers = new Map();
+
+        // Join the swarm and handle connection lifecycle
+        try {
+            await swarm.join(topic);
+            networkStatus.textContent = 'Connected to network';
+            connectionInfo.textContent = `Your ID: ${clientId}`;
+        } catch (err) {
+            networkStatus.textContent = 'Failed to connect: ' + err.message;
+            console.error('Connection error:', err);
+        }
+
+        function updatePeerList() {
+            peersList.innerHTML = '';
+            peers.forEach((peer, id) => {
+                const peerDiv = document.createElement('div');
+                peerDiv.className = 'peer';
+                const peerType = peer.info?.type || 'unknown';
+                peerDiv.innerHTML = `
+                    <span class="id">${id}</span>
+                    <span class="type ${peerType}">${peerType}</span>
+                    <span class="connection ${peer.connectionType}">${peer.connectionType}</span>
+                    ${peer.info?.capabilities ? `
+                        <span class="capabilities">
+                            ${peer.info.capabilities.join(', ')}
+                        </span>
+                    ` : ''}
+                `;
+                peersList.appendChild(peerDiv);
+            });
+        }
+
+        // Handle new peer connections
+        swarm.on('connection', (connection, info) => {
+            const peerId = info.publicKey.toString('hex').slice(0, 8);
+            
+            // Initialize peer tracking
+            peers.set(peerId, { 
+                connection,
+                info: null,
+                connectionType: 'relay'  // Start with relay, will update if direct
+            });
+            updatePeerList();
+            
+            displayMessage('system', `Connected to peer: ${peerId}`);
+            
+            // Request peer info
+            connection.write(JSON.stringify({
+                type: MESSAGE_TYPES.PEER_INFO,
+                info: swarm.peerInfo
+            }));
+
+            // Handle incoming messages
+            connection.on('data', (data) => {
+                try {
+                    const message = JSON.parse(data.toString());
+                    
+                    switch(message.type) {
+                        case MESSAGE_TYPES.CHAT:
+                            displayMessage(message.from.type, `${message.from.id}: ${message.content}`);
+                            break;
+                            
+                        case MESSAGE_TYPES.PEER_INFO:
+                            const peer = peers.get(peerId);
+                            if (peer) {
+                                peer.info = message.info;
+                                updatePeerList();
+                            }
+                            break;
+                            
+                        case MESSAGE_TYPES.CONNECTION_TYPE:
+                            const peerConn = peers.get(peerId);
+                            if (peerConn) {
+                                peerConn.connectionType = message.direct ? 'direct' : 'relay';
+                                updatePeerList();
+                                displayMessage('system', `Connection to ${peerId} is now ${message.direct ? 'direct P2P' : 'via relay'}`);
+                            }
+                            break;
+                    }
+                } catch (err) {
+                    console.error('Failed to parse message:', err);
+                }
+            });
+
+            // Monitor connection type changes
+            connection.on('holepunch', (info) => {
+                if (info.success) {
+                    connection.write(JSON.stringify({
+                        type: MESSAGE_TYPES.CONNECTION_TYPE,
+                        direct: true
+                    }));
+                }
+            });
+
+            // Handle connection errors
+            connection.on('error', (err) => {
+                displayMessage('system', `Error with peer ${peerId}: ${err.message}`);
+                peers.delete(peerId);
+                updatePeerList();
+                console.error(`Connection error with ${peerId}:`, err);
+            });
+
+            // Handle connection close
+            connection.on('close', () => {
+                displayMessage('system', `Disconnected from peer: ${peerId}`);
+                peers.delete(peerId);
+                updatePeerList();
+            });
+        });
+
+        // Display messages in the UI
+        function displayMessage(type, content) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Send message to all peers
+        window.sendMessage = function() {
+            const messageInput = document.getElementById('message');
+            const content = messageInput.value.trim();
+            
+            if (content) {
+                const message = {
+                    type: MESSAGE_TYPES.CHAT,
+                    from: swarm.peerInfo,
+                    content: content,
+                    timestamp: Date.now()
+                };
+
+                // Send to all peers
+                for (const connection of swarm.connections) {
+                    connection.write(JSON.stringify(message));
+                }
+
+                // Display our own message
+                displayMessage('web', `You: ${content}`);
+                messageInput.value = '';
+            }
+        };
+
+        // Handle enter key in input
+        document.getElementById('message').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', async () => {
+            await swarm.leave(topic);
+            await swarm.destroy();
+        });
+    </script>
+</body>
+</html>

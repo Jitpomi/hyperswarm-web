@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperswarmWeb File Share Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { 
+            margin-bottom: 20px; 
+            padding: 10px; 
+            background: #f5f5f5;
+            display: flex;
+            justify-content: space-between;
+        }
+        .peer-list {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+        .peer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+        }
+        .peer .type { color: #666; }
+        .peer .connection { 
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .peer .connection.direct { background: #c8e6c9; }
+        .peer .connection.relay { background: #fff9c4; }
+        .file-area {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .transfers {
+            margin-top: 20px;
+        }
+        .transfer {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .transfer-progress {
+            margin-top: 8px;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .transfer-progress .bar {
+            height: 100%;
+            background: #4caf50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .transfer-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+        }
+        button { 
+            padding: 8px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HyperswarmWeb File Share Example</h1>
+        <div class="status">
+            <span id="network-status">Connecting to network...</span>
+            <span id="connection-info"></span>
+        </div>
+        <div class="peer-list" id="peer-list">
+            <h3>Connected Peers</h3>
+            <div id="peers"></div>
+        </div>
+        <div class="file-area">
+            <h3>Share a File</h3>
+            <input type="file" id="fileInput">
+            <div class="transfers" id="transfers"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import HyperswarmWeb from 'hyperswarm-web';
+        import crypto from 'crypto';
+
+        // Constants
+        const MESSAGE_TYPES = {
+            PEER_INFO: 'PEER_INFO',
+            FILE_OFFER: 'FILE_OFFER',
+            FILE_ACCEPT: 'FILE_ACCEPT',
+            FILE_REJECT: 'FILE_REJECT',
+            FILE_CHUNK: 'FILE_CHUNK',
+            FILE_COMPLETE: 'FILE_COMPLETE',
+            CONNECTION_TYPE: 'CONNECTION_TYPE'
+        };
+
+        const CHUNK_SIZE = 16384; // 16KB chunks
+
+        // Initialize network state
+        const swarm = new HyperswarmWeb({
+            bootstrap: ['ws://localhost:3400']
+        });
+
+        const clientId = crypto.randomBytes(32);
+        const topic = crypto.createHash('sha256')
+            .update('hyperswarm-web-example')
+            .digest();
+
+        // Set peer info
+        swarm.peerInfo = {
+            type: 'web-browser',
+            id: clientId.toString('hex').slice(0, 8)
+        };
+
+        // State management
+        const peers = new Map();
+        const transfers = new Map();
+
+        // UI update functions
+        function updateNetworkStatus(status) {
+            document.getElementById('network-status').textContent = status;
+        }
+
+        function updateConnectionInfo(info) {
+            document.getElementById('connection-info').textContent = info;
+        }
+
+        function updatePeerList() {
+            const peersList = document.getElementById('peers');
+            peersList.innerHTML = '';
+            peers.forEach((peer, id) => {
+                const peerDiv = document.createElement('div');
+                peerDiv.className = 'peer';
+                peerDiv.innerHTML = `
+                    <span class="id">${id}</span>
+                    <span class="type">${peer.info?.type || 'Unknown'}</span>
+                    <span class="connection ${peer.connectionType}">${peer.connectionType}</span>
+                `;
+                peersList.appendChild(peerDiv);
+            });
+        }
+
+        function updateTransferUI(transfer) {
+            let transferDiv = document.getElementById(`transfer-${transfer.id}`);
+            if (!transferDiv) {
+                transferDiv = document.createElement('div');
+                transferDiv.id = `transfer-${transfer.id}`;
+                transferDiv.className = 'transfer';
+                document.getElementById('transfers').appendChild(transferDiv);
+            }
+
+            const progress = transfer.chunks ? 
+                (transfer.chunks.size / transfer.totalChunks) * 100 : 
+                (transfer.progress || 0);
+
+            transferDiv.innerHTML = `
+                <div class="transfer-info">
+                    <span>${transfer.filename} (${formatBytes(transfer.size)})</span>
+                    <span>${Math.round(progress)}%</span>
+                </div>
+                ${transfer.status === 'pending' ? `
+                    <div>
+                        <button onclick="acceptTransfer('${transfer.id}')">Accept</button>
+                        <button onclick="rejectTransfer('${transfer.id}')">Reject</button>
+                    </div>
+                ` : ''}
+                <div class="transfer-progress">
+                    <div class="bar" style="width: ${progress}%"></div>
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // File handling functions
+        async function handleFileSelect(file) {
+            const transferId = crypto.randomBytes(8).toString('hex');
+            const transfer = {
+                id: transferId,
+                filename: file.name,
+                size: file.size,
+                type: file.type,
+                status: 'sending',
+                progress: 0
+            };
+
+            transfers.set(transferId, transfer);
+            updateTransferUI(transfer);
+
+            // Notify peers
+            peers.forEach((peer) => {
+                peer.connection.write(JSON.stringify({
+                    type: MESSAGE_TYPES.FILE_OFFER,
+                    transfer: {
+                        id: transferId,
+                        filename: file.name,
+                        size: file.size,
+                        type: file.type
+                    },
+                    from: swarm.peerInfo
+                }));
+            });
+        }
+
+        // Event handlers
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFileSelect(file);
+        });
+
+        window.acceptTransfer = function(transferId) {
+            const transfer = transfers.get(transferId);
+            if (!transfer) return;
+
+            transfer.status = 'receiving';
+            transfer.chunks = new Map();
+            transfer.totalChunks = Math.ceil(transfer.size / CHUNK_SIZE);
+            updateTransferUI(transfer);
+
+            peers.forEach((peer) => {
+                peer.connection.write(JSON.stringify({
+                    type: MESSAGE_TYPES.FILE_ACCEPT,
+                    transferId
+                }));
+            });
+        };
+
+        window.rejectTransfer = function(transferId) {
+            const transfer = transfers.get(transferId);
+            if (!transfer) return;
+
+            transfers.delete(transferId);
+            document.getElementById(`transfer-${transferId}`)?.remove();
+
+            peers.forEach((peer) => {
+                peer.connection.write(JSON.stringify({
+                    type: MESSAGE_TYPES.FILE_REJECT,
+                    transferId
+                }));
+            });
+        };
+
+        // Network event handlers
+        swarm.on('connection', (connection, info) => {
+            const peerId = info.publicKey.toString('hex').slice(0, 8);
+            
+            // Initialize peer tracking
+            peers.set(peerId, { 
+                connection,
+                info: null,
+                connectionType: 'relay'  // Start with relay, will update if direct
+            });
+            updatePeerList();
+            
+            // Send peer info
+            connection.write(JSON.stringify({
+                type: MESSAGE_TYPES.PEER_INFO,
+                info: swarm.peerInfo
+            }));
+
+            // Handle incoming messages
+            connection.on('data', async (data) => {
+                try {
+                    const message = JSON.parse(data.toString());
+                    
+                    switch(message.type) {
+                        case MESSAGE_TYPES.PEER_INFO:
+                            handlePeerInfo(peerId, message);
+                            break;
+                            
+                        case MESSAGE_TYPES.FILE_OFFER:
+                            handleFileOffer(message);
+                            break;
+
+                        case MESSAGE_TYPES.FILE_ACCEPT:
+                            handleFileAccept(message.transferId);
+                            break;
+
+                        case MESSAGE_TYPES.FILE_REJECT:
+                            handleFileReject(message.transferId);
+                            break;
+
+                        case MESSAGE_TYPES.FILE_CHUNK:
+                            await handleFileChunk(message);
+                            break;
+
+                        case MESSAGE_TYPES.FILE_COMPLETE:
+                            await handleFileComplete(message);
+                            break;
+
+                        case MESSAGE_TYPES.CONNECTION_TYPE:
+                            handleConnectionType(peerId, message.direct);
+                            break;
+                    }
+                } catch (err) {
+                    console.error('Failed to parse message:', err);
+                }
+            });
+
+            // Monitor connection type changes
+            connection.on('holepunch', (info) => {
+                if (info.success) {
+                    connection.write(JSON.stringify({
+                        type: MESSAGE_TYPES.CONNECTION_TYPE,
+                        direct: true
+                    }));
+                }
+            });
+
+            // Handle disconnection
+            connection.on('close', () => {
+                peers.delete(peerId);
+                updatePeerList();
+            });
+        });
+
+        // Message handlers
+        function handlePeerInfo(peerId, message) {
+            const peer = peers.get(peerId);
+            if (peer) {
+                peer.info = message.info;
+                updatePeerList();
+            }
+        }
+
+        function handleFileOffer(message) {
+            const { transfer: fileOffer, from } = message;
+            transfers.set(fileOffer.id, {
+                ...fileOffer,
+                from,
+                status: 'pending',
+                chunks: new Map()
+            });
+            updateTransferUI(transfers.get(fileOffer.id));
+        }
+
+        function handleFileAccept(transferId) {
+            const transfer = transfers.get(transferId);
+            if (!transfer || transfer.status !== 'sending') return;
+
+            sendFileChunks(transfer);
+        }
+
+        function handleFileReject(transferId) {
+            const transfer = transfers.get(transferId);
+            if (!transfer) return;
+
+            transfers.delete(transferId);
+            document.getElementById(`transfer-${transferId}`)?.remove();
+        }
+
+        async function handleFileChunk(message) {
+            const { transferId, chunk, index } = message;
+            const transfer = transfers.get(transferId);
+            if (!transfer || transfer.status !== 'receiving') return;
+
+            transfer.chunks.set(index, chunk);
+            updateTransferUI(transfer);
+        }
+
+        async function handleFileComplete(message) {
+            const transfer = transfers.get(message.transferId);
+            if (!transfer || transfer.status !== 'receiving') return;
+
+            const chunks = Array.from(transfer.chunks.values());
+            const blob = new Blob(chunks, { type: transfer.type });
+            
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = transfer.filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+
+            transfers.delete(transfer.id);
+            document.getElementById(`transfer-${transfer.id}`)?.remove();
+        }
+
+        function handleConnectionType(peerId, isDirect) {
+            const peer = peers.get(peerId);
+            if (peer) {
+                peer.connectionType = isDirect ? 'direct' : 'relay';
+                updatePeerList();
+            }
+        }
+
+        async function sendFileChunks(transfer) {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = await file.slice(start, end).arrayBuffer();
+
+                peers.forEach((peer) => {
+                    peer.connection.write(JSON.stringify({
+                        type: MESSAGE_TYPES.FILE_CHUNK,
+                        transferId: transfer.id,
+                        chunk: Array.from(new Uint8Array(chunk)),
+                        index: i
+                    }));
+                });
+
+                transfer.progress = (i + 1) / totalChunks * 100;
+                updateTransferUI(transfer);
+            }
+
+            peers.forEach((peer) => {
+                peer.connection.write(JSON.stringify({
+                    type: MESSAGE_TYPES.FILE_COMPLETE,
+                    transferId: transfer.id
+                }));
+            });
+
+            transfers.delete(transfer.id);
+            document.getElementById(`transfer-${transfer.id}`)?.remove();
+        }
+
+        // Join the swarm and handle connection lifecycle
+        try {
+            await swarm.join(topic);
+            updateNetworkStatus('Connected to network');
+            updateConnectionInfo(`Your ID: ${swarm.peerInfo.id}`);
+        } catch (err) {
+            updateNetworkStatus('Failed to connect: ' + err.message);
+            console.error('Connection error:', err);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', async () => {
+            await swarm.leave(topic);
+            await swarm.destroy();
+        });
+    </script>
+</body>
+</html>

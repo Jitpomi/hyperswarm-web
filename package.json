@@ -1,24 +1,36 @@
 {
   "name": "hyperswarm-web",
   "version": "1.0.0",
-  "description": "A library that enables web applications to participate in the Hyperswarm network",
+  "description": "Web-compatible implementation of Hyperswarm",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build",
+    "test": "vitest"
   },
-  "dependencies": {
-    "@hyperswarm/dht": "^6.2.0",
-    "b4a": "^1.6.4"
-  },
-  "devDependencies": {},
   "keywords": [
     "hyperswarm",
     "p2p",
     "web",
     "browser",
-    "dht"
+    "webrtc"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@hyperswarm/dht": "^6.2.0",
+    "b4a": "^1.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  }
 }

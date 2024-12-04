@@ -20,46 +20,36 @@ coverage
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# Bower dependency directory (https://bower.io/)
-bower_components
-
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
-
 # Dependency directories
 node_modules/
 jspm_packages/
 
-# TypeScript v1 declaration files
-typings/
+# TypeScript specific
+dist/
+*.tsbuildinfo
+.tscache/
 
-# Optional npm cache directory
-.npm
+# IDE and system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
 
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
+# Environment variables
 .env
+.env.local
+.env.*.local
 
-# next.js build output
-.next
+# Local development overrides
+*.local.js
+*.local.ts
+config.local.*
 
-# UUUUGH
-
-package-lock.json
+# Certificates and keys
+certs/
+*.key
+*.crt
+*.pem
+*.cert
+*.ca-bundle

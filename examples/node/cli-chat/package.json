@@ -1,0 +1,25 @@
+{
+  "name": "hyperswarm-cli-chat",
+  "version": "1.0.0",
+  "description": "CLI chat client using Hyperswarm",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "debug": "node --inspect-brk dist/index.js",
+    "dev": "nodemon --watch src --ext ts --exec 'tsx' src/index.ts"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "hyperswarm": "^4.8.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "nodemon": "^3.1.7",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
